@@ -1,0 +1,4 @@
+warehouse_name,warehouse_location,total_quantity_handled,total_revenue,regions_served
+Gudang Utama Ancol,Jakarta,200232.0,1289134540.0,5
+Gudang Hub Rungkut,Surabaya,145238.0,958370715.0,5
+Gudang Regional Leuwi Panjang,Bandung,61468.0,389923995.0,5
