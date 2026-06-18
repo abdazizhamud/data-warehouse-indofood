@@ -1,0 +1,5 @@
+promotion_id,promotion_name,discount_percentage,promo_type
+401,No Promotion,0.0,None
+402,Promo Gajian Indomaret,0.1,Price Cut
+403,Diskon Hari Raya,0.15,Seasonal
+404,Bundling Merdeka,0.05,Bundle

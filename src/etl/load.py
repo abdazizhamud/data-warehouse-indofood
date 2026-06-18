@@ -1,10 +1,14 @@
 import os
+from pathlib import Path
 import pandas as pd
 from sqlalchemy import create_engine, text
 
 def run_etl_load():
     print("=== Memulai Proses ETL Load ke Postgres Docker ===")
     
+    base_dir = Path(__file__).resolve().parents[2]
+    warehouse_dir = base_dir / 'data' / 'warehouse'
+
     # 1. Konfigurasi Koneksi Database (Sesuaikan dengan setup Docker-mu)
     DB_USER = "postgres"
     DB_PASSWORD = "password"  # Ganti dengan password Postgres Docker-mu
@@ -38,14 +42,14 @@ def run_etl_load():
     
     # 2. Daftar file yang akan di-load (Urutan krusial: Dimensi dulu, baru Fakta!)
     files_to_load = {
-        'dim_product': 'data/warehouse/dim_product.csv',
-        'dim_time': 'data/warehouse/dim_time.csv',
-        'dim_distributor': 'data/warehouse/dim_distributor.csv',
-        'dim_region': 'data/warehouse/dim_region.csv',
-        'dim_promotion': 'data/warehouse/dim_promotion.csv',
-        'dim_customer_segment': 'data/warehouse/dim_customer_segment.csv',
-        'dim_warehouse': 'data/warehouse/dim_warehouse.csv',
-        'fact_sales': 'data/warehouse/fact_sales.csv' # Terakhir karena butuh Foreign Key dari dimensi
+        'dim_product': warehouse_dir / 'dim_product.csv',
+        'dim_time': warehouse_dir / 'dim_time.csv',
+        'dim_distributor': warehouse_dir / 'dim_distributor.csv',
+        'dim_region': warehouse_dir / 'dim_region.csv',
+        'dim_promotion': warehouse_dir / 'dim_promotion.csv',
+        'dim_customer_segment': warehouse_dir / 'dim_customer_segment.csv',
+        'dim_warehouse': warehouse_dir / 'dim_warehouse.csv',
+        'fact_sales': warehouse_dir / 'fact_sales.csv' # Terakhir karena butuh Foreign Key dari dimensi
     }
     
     # 3. Eksekusi Load menggunakan pandas.to_sql

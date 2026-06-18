@@ -5,15 +5,13 @@ import random
 from datetime import datetime, timedelta
 
 def generate_all_data():
-    # Seed untuk konsistensi
     np.random.seed(42)
     random.seed(42)
-    
+
     os.makedirs('data/staging', exist_ok=True)
 
     print("Generating dimension master data...")
-    
-    # Dim_Product (sama seperti sebelumnya)
+
     df_product = pd.DataFrame({
         'product_id': [101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120],
         'product_name': [
@@ -67,8 +65,7 @@ def generate_all_data():
             2500, 2500
         ]
     })
-    
-    # Dim_Distributor
+
     df_distributor = pd.DataFrame({
         'distributor_id': [201, 202, 203, 204],
         'distributor_name': ['PT Indomarco Adi Prima Jakarta', 'PT Indomarco Adi Prima Bandung', 'PT Sukses Makmur Surabaya', 'PT Distribusi Nusantara Medan'],
@@ -100,7 +97,33 @@ def generate_all_data():
         'warehouse_location': ['Jakarta', 'Bandung', 'Surabaya']
     })
 
-    # Ekspor Master Dimensi
+    # -------------------------------------------------------
+    # PROMO ELIGIBILITY MAP — tentukan di sini, tidak random
+    # -------------------------------------------------------
+    # 401 = No Promotion     → semua produk bisa
+    # 402 = Promo Gajian     → Indomie & Pop Mie (Noodles)
+    # 403 = Diskon Hari Raya → Indomilk, Ichi Ocha, Club, Racik
+    # 404 = Bundling Merdeka → Chitato, Qtela, Chiki, JetZ (Snacks)
+
+    promo_eligible_products = {
+        402: [101, 102, 103, 104, 105, 106, 107],        # Noodles
+        403: [115, 116, 117, 118, 119, 120],              # Dairy, Beverages, Ingredients
+        404: [108, 109, 110, 111, 112, 113, 114],         # Snacks
+    }
+
+    # Kebalikannya: tiap produk -> promo yang boleh
+    # Semua produk selalu bisa dapat 401 (No Promo)
+    product_to_eligible_promos = {}
+    all_product_ids = df_product['product_id'].tolist()
+    for pid in all_product_ids:
+        eligible = [401]  # No Promo selalu tersedia
+        for promo_id, products in promo_eligible_products.items():
+            if pid in products:
+                eligible.append(promo_id)
+        product_to_eligible_promos[pid] = eligible
+
+    # -------------------------------------------------------
+
     df_product.to_csv('data/staging/raw_products.csv', index=False)
     df_distributor.to_csv('data/staging/raw_distributors.csv', index=False)
     df_region.to_csv('data/staging/raw_regions.csv', index=False)
@@ -112,77 +135,83 @@ def generate_all_data():
     num_sales = 2000
     start_date = datetime(2025, 1, 1)
 
-    # WEIGHTED DISTRIBUTION untuk realistic data
-    # Distributor: Jakarta dominan (50%), Surabaya (25%), Bandung (15%), Medan (10%)
     distributor_weights = [0.50, 0.15, 0.25, 0.10]
-    
-    # Warehouse: Jakarta dominan (50%), Surabaya (35%), Bandung (15%)
-    warehouse_weights = [0.50, 0.15, 0.35]
-    
-    # Promotion: Bundling paling efektif (40%), No Promo (30%), Price Cut (20%), Seasonal (10%)
-    promotion_weights = [0.30, 0.20, 0.10, 0.40]
-    
-    # Segment: Pasar Tradisional dominan (45%), Retail (35%), Supermarket (20%)
-    segment_weights = [0.35, 0.20, 0.45]
-    
-    # Region: Jawa dominates (60%), Sumatera (20%), Sulawesi (20%)
-    region_weights = [0.30, 0.15, 0.20, 0.15, 0.20]
-    
-    # Product popularity (Indomie & Chitato best-sellers)
-    product_weights = [0.08, 0.07, 0.08, 0.07,  # Indomie
-                      0.05, 0.05, 0.04,           # Pop Mie
-                      0.10, 0.08, 0.09,           # Chitato (top sellers!)
-                      0.03, 0.03,                 # Qtela
-                      0.04, 0.02,                 # Chiki & JetZ
-                      0.06, 0.07,                 # Indomilk
-                      0.02, 0.01,                 # Ichi Ocha & Club
-                      0.01, 0.01]                 # Racik
-    product_weights = [w / sum(product_weights) for w in product_weights]  # Normalize
-    
+    warehouse_weights   = [0.50, 0.15, 0.35]
+    segment_weights     = [0.35, 0.20, 0.45]
+    region_weights      = [0.30, 0.15, 0.20, 0.15, 0.20]
+
+    product_weights = [0.08, 0.07, 0.08, 0.07,
+                       0.05, 0.05, 0.04,
+                       0.10, 0.08, 0.09,
+                       0.03, 0.03,
+                       0.04, 0.02,
+                       0.06, 0.07,
+                       0.02, 0.01,
+                       0.01, 0.01]
+    product_weights = [w / sum(product_weights) for w in product_weights]
+
+    # Promo weight per eligible slot — kalau produk eligible 2 promo,
+    # peluang No Promo 50%, promo aktif 50%
+    # Bisa diatur sesuai kebutuhan
+    PROMO_ACTIVE_CHANCE = 0.60  # 60% chance kena promo kalau eligible
+
     sales_data = []
-    
+
     for i in range(num_sales):
         sale_id = 10000 + i
         raw_date = (start_date + timedelta(days=int(np.random.randint(0, 540)))).strftime('%Y-%m-%d')
-        
-        # Weighted random choices
-        product_id = np.random.choice(df_product['product_id'].tolist(), p=product_weights)
-        distributor_id = np.random.choice(df_distributor['distributor_id'].tolist(), p=distributor_weights)
-        region_id = np.random.choice(df_region['region_id'].tolist(), p=region_weights)
-        promotion_id = np.random.choice(df_promotion['promotion_id'].tolist(), p=promotion_weights)
-        segment_id = np.random.choice(df_customer_segment['segment_id'].tolist(), p=segment_weights)
-        warehouse_id = np.random.choice(df_warehouse['warehouse_id'].tolist(), p=warehouse_weights)
-        
-        # Quantity variance: lebih tinggi untuk bundling & promo, lebih rendah untuk no promo
-        if promotion_id == 404:  # Bundling
-            quantity = int(np.random.normal(loc=250, scale=100))  # Higher avg
-        elif promotion_id == 401:  # No Promo
-            quantity = int(np.random.normal(loc=150, scale=80))   # Lower avg
+
+        product_id   = int(np.random.choice(all_product_ids, p=product_weights))
+        distributor_id = int(np.random.choice(df_distributor['distributor_id'].tolist(), p=distributor_weights))
+        region_id    = int(np.random.choice(df_region['region_id'].tolist(), p=region_weights))
+        segment_id   = int(np.random.choice(df_customer_segment['segment_id'].tolist(), p=segment_weights))
+        warehouse_id = int(np.random.choice(df_warehouse['warehouse_id'].tolist(), p=warehouse_weights))
+
+        # Promo dipilih berdasarkan eligibility produk — bukan random bebas
+        eligible_promos = product_to_eligible_promos[product_id]
+        active_promos   = [p for p in eligible_promos if p != 401]  # selain No Promo
+
+        if active_promos and random.random() < PROMO_ACTIVE_CHANCE:
+            promotion_id = int(random.choice(active_promos))
         else:
-            quantity = int(np.random.normal(loc=200, scale=90))   # Medium
-        
-        quantity = max(10, quantity)  # Minimal 10 units
-        
+            promotion_id = 401  # No Promotion
+
+        # Quantity variance mengikuti promo
+        if promotion_id == 404:
+            quantity = int(np.random.normal(loc=250, scale=100))
+        elif promotion_id == 401:
+            quantity = int(np.random.normal(loc=150, scale=80))
+        else:
+            quantity = int(np.random.normal(loc=200, scale=90))
+
+        quantity = max(10, quantity)
+
         sales_data.append({
-            'sales_id': sale_id,
-            'raw_date': raw_date,
-            'product_id': int(product_id),
-            'distributor_id': int(distributor_id),
-            'region_id': int(region_id),
-            'promotion_id': int(promotion_id),
-            'segment_id': int(segment_id),
-            'warehouse_id': int(warehouse_id),
-            'quantity': quantity
+            'sales_id':       sale_id,
+            'raw_date':       raw_date,
+            'product_id':     product_id,
+            'distributor_id': distributor_id,
+            'region_id':      region_id,
+            'promotion_id':   promotion_id,
+            'segment_id':     segment_id,
+            'warehouse_id':   warehouse_id,
+            'quantity':       quantity,
         })
-    
+
     df_raw_sales = pd.DataFrame(sales_data)
     df_raw_sales.to_csv('data/staging/raw_sales.csv', index=False)
-    
-    print(f"✓ Berhasil generate {num_sales} transaksi dengan skewness realistic!")
+
+    print(f"✓ Berhasil generate {num_sales} transaksi!")
+    print("  - Promo hanya berlaku untuk produk yang eligible (tidak random)")
     print("  - Jakarta distributor dominan (50% transaksi)")
-    print("  - Bundling promo paling efektif (40% transaksi)")
     print("  - Chitato & Indomie best-sellers")
     print("  - Pasar Tradisional segment terbesar (45%)")
+    print()
+    print("=== PROMO ELIGIBILITY SUMMARY ===")
+    for promo_id, products in promo_eligible_products.items():
+        promo_name = df_promotion[df_promotion['promotion_id'] == promo_id]['promotion_name'].values[0]
+        brands = df_product[df_product['product_id'].isin(products)]['brand'].unique().tolist()
+        print(f"  [{promo_id}] {promo_name}: {', '.join(brands)}")
 
 if __name__ == '__main__':
     generate_all_data()
