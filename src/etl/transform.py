@@ -1,16 +1,23 @@
+import os
+from pathlib import Path
 import pandas as pd
 
 def run_etl_transform():
     print("Memulai proses ETL Extract & Transform...")
-    
+
+    # Root proyek adalah dua level di atas folder src/etl
+    base_dir = Path(__file__).resolve().parents[2]
+    staging_dir = base_dir / 'data' / 'staging'
+    warehouse_dir = base_dir / 'data' / 'warehouse'
+
     # EXTRACT: Membaca file dari staging area
-    df_raw_sales = pd.read_csv('data/staging/raw_sales.csv')
-    df_product = pd.read_csv('data/staging/raw_products.csv')
-    df_promotion = pd.read_csv('data/staging/raw_promotions.csv')
-    df_distributor = pd.read_csv('data/staging/raw_distributors.csv')
-    df_region = pd.read_csv('data/staging/raw_regions.csv')
-    df_segment = pd.read_csv('data/staging/raw_segments.csv')
-    df_warehouse = pd.read_csv('data/staging/raw_warehouses.csv')
+    df_raw_sales = pd.read_csv(staging_dir / 'raw_sales.csv')
+    df_product = pd.read_csv(staging_dir / 'raw_products.csv')
+    df_promotion = pd.read_csv(staging_dir / 'raw_promotions.csv')
+    df_distributor = pd.read_csv(staging_dir / 'raw_distributors.csv')
+    df_region = pd.read_csv(staging_dir / 'raw_regions.csv')
+    df_segment = pd.read_csv(staging_dir / 'raw_segments.csv')
+    df_warehouse = pd.read_csv(staging_dir / 'raw_warehouses.csv')
 
     # TRANSFORM 1: Membuat Dim_Time secara dinamis berdasarkan data penjualan unik
     print("Mentransformasi Dim_Time...")
@@ -48,20 +55,19 @@ def run_etl_transform():
     df_product_final = df_product.drop(columns=['base_price'])
 
     # LOAD SIMULATION: Simpan versi clean & ready ke folder lokal / siap di-push ke database
-    print("Menyimpan hasil transformasi ke 'data/warehouse/'...")
-    os.makedirs('data/warehouse', exist_ok=True)
+    print(f"Menyimpan hasil transformasi ke '{warehouse_dir}/'...")
+    warehouse_dir.mkdir(parents=True, exist_ok=True)
     
-    df_fact_sales.to_csv('data/warehouse/fact_sales.csv', index=False)
-    df_time.to_csv('data/warehouse/dim_time.csv', index=False)
-    df_product_final.to_csv('data/warehouse/dim_product.csv', index=False)
-    df_distributor.to_csv('data/warehouse/dim_distributor.csv', index=False)
-    df_region.to_csv('data/warehouse/dim_region.csv', index=False)
-    df_promotion.to_csv('data/warehouse/dim_promotion.csv', index=False)
-    df_segment.to_csv('data/warehouse/dim_customer_segment.csv', index=False)
-    df_warehouse.to_csv('data/warehouse/dim_warehouse.csv', index=False)
+    df_fact_sales.to_csv(warehouse_dir / 'fact_sales.csv', index=False)
+    df_time.to_csv(warehouse_dir / 'dim_time.csv', index=False)
+    df_product_final.to_csv(warehouse_dir / 'dim_product.csv', index=False)
+    df_distributor.to_csv(warehouse_dir / 'dim_distributor.csv', index=False)
+    df_region.to_csv(warehouse_dir / 'dim_region.csv', index=False)
+    df_promotion.to_csv(warehouse_dir / 'dim_promotion.csv', index=False)
+    df_segment.to_csv(warehouse_dir / 'dim_customer_segment.csv', index=False)
+    df_warehouse.to_csv(warehouse_dir / 'dim_warehouse.csv', index=False)
     
     print("Proses ETL Transformasi Selesai!")
 
 if __name__ == '__main__':
-    import os
     run_etl_transform()
